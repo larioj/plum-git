@@ -20,7 +20,7 @@ function! plum#git#IsStatus(context)
 endfunction
 
 function! s:extraCommands()
-  return ['plum-git: add all', 'plum-git: unstage all' ]
+  return ['plum-git: add all', 'plum-git: unstage all', 'plum-git: commit']
 endfunction
 
 function! s:DrawPane(context)
@@ -82,16 +82,21 @@ endfunction
 
 function! plum#git#StagedToggleApply(context)
   let context = a:context
+  let savedl = line('.')
+  let savedc = col('.')
   let newFileText = 'new file:'
   let modifiedText = 'modified:'
   let commands = s:extraCommands()
   let addAll = commands[0]
   let unstageAll = commands[1]
+  let commit = commands[2]
   let cmd = ''
   if context.match ==# addAll
     let cmd = 'git add -A'
   elseif context.match ==# unstageAll
     let cmd = 'git reset HEAD'
+  elseif context.match ==# commit
+    let cmd = 'git commit'
   elseif context.match =~#  newFileText
     let path = trim(strpart(trim(context.match), len(newFileText)))
     let cmd = 'git reset HEAD -- ' . path
@@ -105,7 +110,9 @@ function! plum#git#StagedToggleApply(context)
   else
     let cmd = 'git add ' . context.match
   endif
-  execute '! ' . cmd
+  silent execute '! ' . cmd
+  redraw
   enew
   call s:DrawPane(context)
+  call cursor(savedl, savedc)
 endfunction
