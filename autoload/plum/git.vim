@@ -22,24 +22,27 @@ endfunction
 function! s:extraCommands()
   return ['plum-git: add all', 'plum-git: unstage all' ]
 endfunction
-  
-function! plum#git#InitPane(context)
-  new
-  s:DrawPane(context)
-endfunction
 
 function! s:DrawPane(context)
+  let context = a:context
   setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile
   execute '$read ! git status' 
+  execute '1,1d'
   let extraText = s:extraCommands()
-  append(line('$'), extraText)
-  set nomodifiable
+  call append(line('$'), extraText)
+  setlocal nomodifiable
   let b:plum_actions = [ plum#git#StagedToggle() ]
+endfunction
+
+function! plum#git#InitPane(context)
+  let context = a:context
+  new
+  call s:DrawPane(context)
 endfunction
 
 function! plum#git#StagedToggle()
   return plum#CreateAction(
-        \ 'plum#git#StagedToggle'
+        \ 'plum#git#StagedToggle',
         \ function('plum#git#IsFile'),
         \ function('plum#git#StagedToggleApply')
         \ )
@@ -57,6 +60,16 @@ function! plum#git#IsFile(context)
   endif
   if curline =~# 'new file:' || curline =~# 'modified:'
     let context.match = curline
+    let context.staged = 1
+    let lnum = line('.') - 1
+    while lnum > 0
+      let l = getline(lnum)
+      if l =~# 'not staged'
+        let context.staged = 0
+        break
+      endif
+      let lnum = lnum - 1
+    endwhile
     return 1
   endif
   let path = trim(curline)
@@ -84,11 +97,15 @@ function! plum#git#StagedToggleApply(context)
     let cmd = 'git reset HEAD -- ' . path
   elseif context.match =~# modifiedText
     let path = trim(strpart(trim(context.match), len(modifiedText)))
-    let cmd = 'git add ' . path
+    if context.staged
+      let cmd = 'git reset HEAD -- ' . path
+    else
+      let cmd = 'git add ' . path
+    endif
   else
     let cmd = 'git add ' . context.match
   endif
   execute '! ' . cmd
   enew
-  s:DrawPane(context)
+  call s:DrawPane(context)
 endfunction
