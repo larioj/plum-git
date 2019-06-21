@@ -20,7 +20,12 @@ function! plum#git#IsStatus(context)
 endfunction
 
 function! s:extraCommands()
-  return ['plum-git: add all', 'plum-git: unstage all', 'plum-git: commit']
+  return [
+        \ 'plum-git: add all', 
+        \ 'plum-git: unstage all', 
+        \ 'plum-git: commit',
+        \ 'plum-git: push'
+        \ ]
 endfunction
 
 function! s:DrawPane(context)
@@ -90,6 +95,7 @@ function! plum#git#StagedToggleApply(context)
   let addAll = commands[0]
   let unstageAll = commands[1]
   let commit = commands[2]
+  let push = commands[3]
   let cmd = ''
   if context.match ==# addAll
     let cmd = 'git add -A'
@@ -97,6 +103,8 @@ function! plum#git#StagedToggleApply(context)
     let cmd = 'git reset HEAD'
   elseif context.match ==# commit
     let cmd = 'git commit'
+  elseif context.match ==# push
+    let cmd = 'git push'
   elseif context.match =~#  newFileText
     let path = trim(strpart(trim(context.match), len(newFileText)))
     let cmd = 'git reset HEAD -- ' . path
