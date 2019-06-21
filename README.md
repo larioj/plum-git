@@ -5,8 +5,8 @@ Common git flows under `$ git status`
 -   autoload/plum/git.vim
 
 ## Test
-$ git status
-$ git status -s
+    $ git status
+    $ git status -s
 
 ## Install
 Install with you favorite plugin manager.
