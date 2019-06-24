@@ -2,7 +2,7 @@
 ## Files
 -   autoload/plum/ui.vim
 -   autoload/plum/git.vim
-$ rm -d autoload/plum/spec
+-   autoload/plum/ui/spec.vim
 
 ## Spec
 ```yaml
@@ -29,55 +29,46 @@ name: plum-git
 back: null
 top: <this>
 update:
-  type: ReifiedCommand
-  name: update
+  type: UpdateCommand
+  name: 'plum-git#update>> update'
   value: git status
   holes: []
-extractors:
-- name: staged
-  apply: function(???)
-  commands:
-  - type: ReifiedCommand
-    name: git reset HEAD -- {{staged}}
-    value: git reset HEAD -- {{staged}}
-    holes: [staged]
-- name: unstaged
-  apply: function(???)
-  commands:
-  - type: ReifiedCommand
-    name: git add {{unstaged}}
-    value: git add {{unstaged}}
-    holes: [unstaged]
-- name: untracked
-  apply: function(???)
-  commands:
-  - type: ReifiedCommand
-    name: git add {{untracked}}
-    value: git add {{untracked}}
-    holes: [untracked]
+uiCommands:
+- type: UiCommand
+  name: 'plum-git#ui>> update'
+  value: update
+  holes: []
+- type: UiCommand
+  name: 'plum-git#ui>> back'
+  value: back
+  holes: []
+- type: UiCommand
+  name: 'plum-git#ui>> top'
+  value: top
+  holes: []
 commands:
-- type: ReifiedCommand
-  name: git add -A
+- type: Command
+  name: 'plum-git>> git add -A'
   value: git add -A
   holes: []
-- type: ReifiedCommand
-  name: git reset HEAD
+- type: Command
+  name: 'plum-git>> git reset HEAD'
   value: git reset HEAD
   holes: []
-- type: ReifiedCommand
-  name: git add {{unstaged}}
+- type: Command
+  name: 'plum-git>> git add {{unstaged}}'
   value: git add {{unstaged}}
   holes: [unstaged]
-- type: ReifiedCommand
-  name: git add {{untracked}}
+- type: Command
+  name: 'plum-git>> git add {{untracked}}'
   value: git add {{untracked}}
   holes: [untracked]
-- type: ReifiedCommand
-  name: git reset HEAD -- {{staged}}
+- type: Command
+  name: 'plum-git>> git reset HEAD -- {{staged}}'
   value: git reset HEAD -- {{staged}}
   holes: [staged]
 children:
-- name: [patch]
+- name: plum-git#[patch]
   top: <..>
   back: <..>
   update:
@@ -85,5 +76,28 @@ children:
     name: update
     value: git status
     holes: []
-.... 
+  .... 
+extractors:
+- name: staged
+  IsMatch: function(???)
+  commands:
+  - type: Command
+    name: git reset HEAD -- {{staged}}
+    value: git reset HEAD -- {{staged}}
+    holes: [staged]
+- name: unstaged
+  IsMatch: function(???)
+  commands:
+  - type: ReifiedCommand
+    name: git add {{unstaged}}
+    value: git add {{unstaged}}
+    holes: [unstaged]
+- name: untracked
+  IsMatch: function(???)
+  commands:
+  - type: ReifiedCommand
+    name: git add {{untracked}}
+    value: git add {{untracked}}
+    holes: [untracked]
+
 ```

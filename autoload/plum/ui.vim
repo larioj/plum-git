@@ -1,4 +1,4 @@
-function! plum#ui#Run(spec)
+function! plum#ui#Render(spec)
   let spec = a:spec
 
   "save state
@@ -60,32 +60,80 @@ endfunction
 function! plum#ui#IsCommand(context)
   let context = a:context
   let store = b:plum_ui_store
+  let spec = plum#ui#spec#Runtime(store.spec, store.holes)
   let curline = getline(line('.'))
-  
-  " match ui commands
-  let uiCommands = plum#ui#UiCommands(store.spec)
-  for uicmd in uiCommands
-    if uicmd.name ==# curline
-      let spec.match = uicmd
-      return 1
-    endif
-  endfor
-  
-  " match runtime commands
-  let runtimeCommands = plum#ui#RuntimeCommands(store.spec, store.holes)
-  for runcmd in runtimeCommands
-    if runcmd.name ==# curline
-      let spec.match = runcmd
-      return 1
-    endif
-  endfor
 
-  " match Children
+  for obj in spec.uiCommands + spec.commands + spec.children
+    if obj.name ==# curline
+      let spec.match = obj
+      return 1
+    endif
+  endfor
 
   " match using extractors
-  for ext in spec.extractors
+  let i = 0
+  while i < len(spec.extractors)
+    let ext = spec.extractors[i]
+    if ext.IsMatch(context)
+      let value = context.match
+      let store.holes = [[ext.name, value]] + store.holes
+      let context.match =
+            \ plum#ui#spec#Runtime(store.spec, store.holes).extractors[i]
+      return 1
+    endif
+    let i = i + 1
+  endwhile
 
+  return 0
+endfunction
 
+function! plum#ui#ApplyCommand(context)
+  let context = a:context
+  let store = b:plum_ui_store
+  let spec = store.spec
+  let match = context.match
+
+  if match.type ==# 'UiCommand'
+    if match.value ==# 'top'
+      let b:plum_ui_store = s:EmptyStore(spec.top)
+      call plum#ui#Render(spec.top)
+    elseif match.value ==# 'back' && type(spec.back) !=# type(v:null)
+      let b:plum_ui_store = s:EmptyStore(spec.back)
+      call plum#ui#Render(spec.back)
+    elseif match.value ==# 'back'
+      let b:plum_ui_store = s:EmptyStore(spec)
+      call plum#ui#Render(spec)
+    else " must be update
+      " don't reset holes
+      call plum#ui#Render(spec)
+    endif
+  elseif match.type ==# 'Command'
+    if len(match.holes) ==# 0
+      silent execute '! ' . match.value
+      redraw
+      let b:plum_ui_store = s:EmptyStore(spec)
+      call plum#ui#Render(spec)
+    else
+      " do nothing
+      call plum#ui#Render(spec)
+    endif
+  elseif match.type ==# 'Extractor'
+    if len(match.commands) ==# 0
+      " do nothing
+      call plum#ui#Render(spec)
+    elseif len(match.commands) ==# 1 && len(match.commands[0].holes) ==# 0
+      silent execute '! ' . match.commands[0].value
+      redraw
+      let b:plum_ui_store = s:EmptyStore(spec)
+      call plum#ui#Render(spec)
+    else
+      " do nothing
+      call plum#ui#Render(spec)
+    endif
+  else " Must be a child
+    let b:plum_ui_store = s:EmptyStore(match)
+    plum#ui#Render(match)
+  endif
 endfunction
 
 function! plum#ui#UiCommands(spec)
@@ -100,21 +148,7 @@ function! plum#ui#UiCommands(spec)
   return uiCommands
 endfunction
 
-function! plum#ui#Example()
-  return { 'name': 'plum-git'
-        \, 'update': plum#ui#Cmd('git status')
-        \, 'extractors': [
-        \    { 'staged': 'stagedfn' },
-        \    { 'untracked' : 'untrackedfn' } ]
-        \, '[patch]': {
-        \    'extractors': [
-        \      { 'staged': 'patchstagedfn' },
-        \      { 'unstaged': 'patchunstagedfn' } ],
-        \    'git patch {{unstaged}}': plum#ui#Cmd() }
-        \, 'git add -A' : plum#ui#Cmd()
-        \, 'git add {{untracked}}' : plum#ui#Cmd()
-        \, 'git reset HEAD -- {{staged}}' : plum#ui#Cmd() }
-endfunction
+
 
 function! plum#ui#Cmd(...)
   if a:0 ==# 0
@@ -267,6 +301,6 @@ function! plum#ui#StringContains(haystack, needle)
   return v:false
 endfunction
 
-function! s:EmptyStore()
-  return { 'holes' : [] }
+function! s:EmptyStore(spec)
+  return { 'spec': a:spec, 'holes' : [] }
 endfunction
