@@ -15,6 +15,7 @@ function! plum#ui#Render(spec)
   for obj in spec.uiCommands + spec.runtime.commands + spec.children
     let commandPaneLines = commandPaneLines + [obj.name]
   endfor
+  let commandPaneLines = commandPaneLines
 
   " draw panes: requires an existing window
   " clear window
