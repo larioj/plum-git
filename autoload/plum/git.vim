@@ -36,6 +36,7 @@ function! plum#git#UiSpec()
         \, 'git add {{unstaged}}' : plum#ui#spec#Cmd()
         \, 'git reset HEAD -- {{staged}}' : plum#ui#spec#Cmd()
         \, 'git commit': plum#ui#spec#Cmd()
+        \, 'git push': plum#ui#spec#Cmd()
         \}
 endfunction
 
