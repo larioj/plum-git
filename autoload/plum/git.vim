@@ -19,108 +19,101 @@ function! plum#git#IsStatus(context)
   return 0
 endfunction
 
-function! s:extraCommands()
-  return [
-        \ 'plum-git: add all', 
-        \ 'plum-git: unstage all', 
-        \ 'plum-git: commit',
-        \ 'plum-git: push'
-        \ ]
-endfunction
-
-function! s:DrawPane(context)
-  let context = a:context
-  setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile
-  execute '$read ! git status' 
-  execute '1,1d'
-  let extraText = s:extraCommands()
-  call append(line('$'), extraText)
-  setlocal nomodifiable
-  let b:plum_actions = [ plum#git#StagedToggle() ]
-endfunction
-
 function! plum#git#InitPane(context)
   let context = a:context
   new
-  call s:DrawPane(context)
+  call plum#ui#Run(plum#git#UiSpec())
 endfunction
 
-function! plum#git#StagedToggle()
-  return plum#CreateAction(
-        \ 'plum#git#StagedToggle',
-        \ function('plum#git#IsFile'),
-        \ function('plum#git#StagedToggleApply')
-        \ )
+function! plum#git#UiSpec()
+  return { 'name': 'plum-git'
+        \, 'update': plum#ui#spec#Cmd('git status')
+        \, 'extractors': 
+        \    [ { 'staged': function('plum#git#MatchStaged') }
+        \    , { 'unstaged': function('plum#git#MatchUnstaged') } 
+        \    ]
+        \, 'git add -A' : plum#ui#spec#Cmd()
+        \, 'git reset HEAD': plum#ui#spec#Cmd()
+        \, 'git add {{unstaged}}' : plum#ui#spec#Cmd()
+        \, 'git reset HEAD -- {{staged}}' : plum#ui#spec#Cmd()
+        \}
 endfunction
 
-function! plum#git#IsFile(context)
+function! plum#git#MatchStaged(context)
   let context = a:context
-  if context.mode !=# 'n'
-    return 0
-  endif
-  let curline = getline(line('.'))
-  if index(s:extraCommands(), curline) !=# -1
-    let context.match = curline
-    return 1
-  endif
-  if curline =~# 'new file:' || curline =~# 'modified:'
-    let context.match = curline
-    let context.staged = 1
-    let lnum = line('.') - 1
-    while lnum > 0
-      let l = getline(lnum)
-      if l =~# 'not staged'
-        let context.staged = 0
-        break
-      endif
-      let lnum = lnum - 1
-    endwhile
-    return 1
-  endif
-  let path = trim(curline)
-  if filereadable(path) || isdirectory(path)
-    let context.match = path
+  if plum#git#MatchFileWithType(context) && 
+        \ context.match.type ==# 'staged'
+    let context.match = context.match.value
     return 1
   endif
   return 0
 endfunction
 
-function! plum#git#StagedToggleApply(context)
+function! plum#git#MatchUnstaged(context)
   let context = a:context
-  let savedl = line('.')
-  let savedc = col('.')
+  if plum#git#MatchFileWithType(context) && 
+        \ context.match.type ==# 'unstaged'
+    let context.match = context.match.value
+    return 1
+  endif
+  return 0
+endfunction
+
+function! plum#git#MatchFileWithType(context)
+  let context = a:context
+  if context.mode !=# 'n'
+    return 0
+  endif
+  let curline = getline(line('.'))
+  let trimmedline = trim(curline)
+  let type = v:null
+  let value = v:null
+
   let newFileText = 'new file:'
   let modifiedText = 'modified:'
-  let commands = s:extraCommands()
-  let addAll = commands[0]
-  let unstageAll = commands[1]
-  let commit = commands[2]
-  let push = commands[3]
-  let cmd = ''
-  if context.match ==# addAll
-    let cmd = 'git add -A'
-  elseif context.match ==# unstageAll
-    let cmd = 'git reset HEAD'
-  elseif context.match ==# commit
-    let cmd = 'git commit'
-  elseif context.match ==# push
-    let cmd = 'git push'
-  elseif context.match =~#  newFileText
-    let path = trim(strpart(trim(context.match), len(newFileText)))
-    let cmd = 'git reset HEAD -- ' . path
-  elseif context.match =~# modifiedText
-    let path = trim(strpart(trim(context.match), len(modifiedText)))
-    if context.staged
-      let cmd = 'git reset HEAD -- ' . path
-    else
-      let cmd = 'git add ' . path
-    endif
-  else
-    let cmd = 'git add ' . context.match
+
+  if s:StartsWith(trimmedline, newFileText)
+    let value = trim(s:DropPrefix(trimmedline, newFileText))
+  elseif s:StartsWith(trimmedline, modifiedText)
+    let value = trim(s:DropPrefix(trimmedline, modifiedText))
   endif
-  silent execute '! ' . cmd
-  redraw
-  enew
-  call s:DrawPane(context)
-  call cursor(savedl, savedc)
+
+  if value !=# v:null
+    let type = 'staged'
+    let lnum = line('.') - 1
+    while lnum > 0
+      let l = getline(lnum)
+      if l =~# 'not staged'
+        let type = 'unstaged'
+        break
+      endif
+      let lnum = lnum - 1
+    endwhile
+    let context.match = { 'type': type, 'value': value }
+    return 1
+  endif
+
+  if filereadable(trimmedline) || isdirectory(trimmedline)
+    let context.match = { 'type': 'unstaged', 'value': trimmedline }
+    return 1
+  endif
+  return 0
+endfunction
+
+function! s:StartsWith(full, prefix)
+  let full = a:full
+  let prefix = a:prefix
+  if strpart(full, 0, len(prefix)) ==# prefix
+    return v:true
+  endif
+  return v:false
+endfunction
+
+function! s:DropPrefix(full, prefix)
+  let full = a:full
+  let prefix = a:prefix
+  if s:StartsWith(full, prefix)
+    return strpart(full, len(prefix))
+  endif
+  return full
 endfunction
