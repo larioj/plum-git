@@ -22,6 +22,9 @@ function! plum#ui#spec#Reify(name, spec, back)
   let spec = deepcopy(a:spec)
   let back = a:back
 
+  let updateBak = deepcopy(spec.update)
+  let extractorsBak = deepcopy(spec.extractors)
+
   " set misc required fields
   let spec.type = 'Spec'
   let spec.back = back
@@ -43,18 +46,19 @@ function! plum#ui#spec#Reify(name, spec, back)
 
   " set update
   let name = spec.name . '#update>> update'
-  let value = v:null
+  let value = spec.update.value
   let holes = [] " we don't support holes for update commands
-  if has_key(spec, 'update')
-    let value = spec.update.value
-  else
-    let value = spec.back.update.value
-  endif
   let spec.update = s:Command('UpdateCommand', name, value, holes)
 
   " set ui commands
+  let uiValues = ['update']
+  if type(spec.back) !=# type(v:null) && type(spec.back.back) ==# type(v:null)
+    let uiValues = uiValues + ['back']
+  elseif type(spec.back) !=# type(v:null) && type(spec.back.back) !=# type(v:null)
+    let uiValues = uiValues + ['back', 'top']
+  endif
   let spec.uiCommands = []
-  for value in ['update', 'back', 'top']
+  for value in uiValues
     let name = spec.name . '#ui>> ' . value
     let spec.uiCommands = spec.uiCommands +
           \ [s:Command('UiCommand', name, value, [])]
@@ -121,6 +125,12 @@ function! plum#ui#spec#Reify(name, spec, back)
   for kv in childrenKv
     let name = kv[0]
     let childSpec = kv[1]
+    if !has_key(childSpec, 'update')
+      let childSpec.update = updateBak
+    endif
+    if !has_key(childSpec, 'extractors')
+      let childSpec.extractors = extractorsBak
+    endif
     let children = children +
           \ [plum#ui#spec#Reify(name, childSpec, spec)]
   endfor
