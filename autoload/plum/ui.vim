@@ -10,7 +10,7 @@ function! plum#ui#Render(spec)
   let spec = plum#ui#spec#UpdateRuntime(spec, store.holes)
 
   " get screen content
-  let contentPane = system(spec.update.value)
+  let contentPaneLines = systemlist(spec.update.value)
   let commandPaneLines = []
   for obj in spec.uiCommands + spec.runtime.commands + spec.children
     let commandPaneLines = commandPaneLines + [obj.name]
@@ -22,7 +22,7 @@ function! plum#ui#Render(spec)
   " make buffer scratch
   setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile
   " append lines
-  call append(0, contentPane)
+  call append(0, contentPaneLines)
   call append(line('$'), commandPaneLines)
   " make sure users cannot modify the content of the window
   " for simplicity
@@ -47,7 +47,7 @@ function! plum#ui#IsCommand(context)
 
   for obj in spec.uiCommands + spec.runtime.commands + spec.children
     if obj.name ==# curline
-      let spec.match = obj
+      let context.match = obj
       return 1
     endif
   endfor
@@ -93,7 +93,7 @@ function! plum#ui#ApplyCommand(context)
   elseif match.type ==# 'Command'
     if len(match.holes) ==# 0
       silent execute '! ' . match.value
-      redraw
+      redraw!
       let emptyStore = v:true
     else
       " don't reset holes
@@ -103,7 +103,7 @@ function! plum#ui#ApplyCommand(context)
       " don't reset holes
     elseif len(match.commands) ==# 1 && len(match.commands[0].holes) ==# 0
       silent execute '! ' . match.commands[0].value
-      redraw
+      redraw!
       let emptyStore = v:true
     else
       " don't reset store
