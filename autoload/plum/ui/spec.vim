@@ -1,27 +1,19 @@
-function! plum#ui#spec#Runtime(spec, holes)
+function! plum#ui#spec#UpdateRuntime(spec, holes)
   let spec = deepcopy(a:spec)
   let holes = a:holes
 
   " we only fill holes at the top level since at the moment
   " we don't support global holes
 
-  " fill holes in spce.commands and spec.extractors.commands
-  for obj in [spec] + spec.extractors
-    let commands = []
-    for cmd in obj.commands
-      for kv in holes
-        let idx = index(cmd.holes, kv[0])
-        if idx >= 0
-          let cmd.value = s:StringReplace(cmd.value, '{{'.kv[0].'}}', kv[1])
-          let cmd.name = s:StringReplace(cmd.name, '{{'.kv[0].'}}', kv[1])
-          call remove(cmd.holes, idx)
-        endif
-      endfor
-      let commands = commands + [cmd]
-    endfor
-    let obj.commands = commands
+  " fill holes in spec.commands and spec.extractors.commands
+  let spec.runtime = {}
+  let spec.runtime.commands = s:FillHoles(spec, holes)
+  let spec.runtime.extractors = []
+  for e in spec.extractors
+    let ext = deepcopy(e)
+    let ext.commands = s:FillHoles(ext, holes)
+    let spec.runtime.extractors = spec.runtime.extractors + [ext]
   endfor
-
   return spec
 endfunction
 
@@ -31,6 +23,7 @@ function! plum#ui#spec#Reify(name, spec, back)
   let back = a:back
 
   " set misc required fields
+  let spec.type = 'Spec'
   let spec.back = back
   if type(spec.back) ==# type(v:null)
     let spec.top = spec
@@ -146,6 +139,25 @@ function! s:Command(type, name, value, holes)
         \, 'value': a:value
         \, 'holes': a:holes
         \}
+endfunction
+
+function! s:FillHoles(obj, holes)
+  let obj = a:obj
+  let holes = a:holes
+  let commands = []
+  for c in obj.commands
+    let cmd = deepcopy(c)
+    for kv in holes
+      let idx = index(cmd.holes, kv[0])
+      if idx >= 0
+        let cmd.value = s:StringReplace(cmd.value, '{{'.kv[0].'}}', kv[1])
+        let cmd.name = s:StringReplace(cmd.name, '{{'.kv[0].'}}', kv[1])
+        call remove(cmd.holes, idx)
+      endif
+    endfor
+    let commands = commands + [cmd]
+  endfor
+  return commands
 endfunction
 
 function! s:ExtractHoles(value, possible_holes)
