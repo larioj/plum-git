@@ -3,6 +3,8 @@ Common git flows under `$ git status`
 
 ## Files
 -   autoload/plum/git.vim
+-   autoload/plum/ui.vim
+-   autoload/plum/ui/spec.vim
 
 ## Test
 $ git status

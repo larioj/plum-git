@@ -13,7 +13,6 @@ function! plum#git#IsStatus(context)
   endif
   let curline = trim(getline(line('.')))
   if curline ==# '$ git status'
-    let context.match = 'git status'
     return 1
   endif
   return 0
@@ -36,6 +35,7 @@ function! plum#git#UiSpec()
         \, 'git reset HEAD': plum#ui#spec#Cmd()
         \, 'git add {{unstaged}}' : plum#ui#spec#Cmd()
         \, 'git reset HEAD -- {{staged}}' : plum#ui#spec#Cmd()
+        \, 'git commit': plum#ui#spec#Cmd()
         \}
 endfunction
 

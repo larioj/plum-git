@@ -68,7 +68,8 @@ function! plum#ui#spec#Reify(name, spec, back)
     if index(keywords, kv[0]) >= 0
       continue
     endif
-    if has_key(kv[1], 'type') &&
+    if type(kv[1]) ==# type({}) &&
+          \ has_key(kv[1], 'type') &&
           \ ('UserCommand' ==# kv[1].type || 
           \  'EmptyUserCommand' ==# kv[1].type)
       let commandsKv = commandsKv + [kv]
@@ -129,7 +130,7 @@ function! plum#ui#spec#Reify(name, spec, back)
 endfunction
 
 function! plum#ui#spec#Keywords()
-  return [ 'name', 'back', 'top', 'update' 
+  return [ 'type', 'name', 'back', 'top', 'update'
         \, 'uiCommands', 'extractors', 'commands', 'children']
 endfunction
 
