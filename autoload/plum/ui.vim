@@ -10,24 +10,18 @@ function! plum#ui#Render(spec)
   let spec = plum#ui#spec#UpdateRuntime(spec, store.holes)
 
   " get screen content
-  let contentPaneLines = systemlist(spec.update.value)
   let commandPaneLines = []
   for obj in spec.uiCommands + spec.runtime.commands + spec.children
     let commandPaneLines = commandPaneLines + [obj.name]
   endfor
   let commandPaneLines = commandPaneLines
 
-  " draw panes: requires an existing window
-  " clear window
-  enew
-  " make buffer scratch
-  setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile
-  " append lines
-  call append(0, contentPaneLines)
-  call append(line('$'), commandPaneLines)
-  " make sure users cannot modify the content of the window
-  " for simplicity
-  setlocal nomodifiable
+  let termCmd = spec.update.value
+  for l in commandPaneLines
+    let termCmd = termCmd . " ;  echo '" . l . "'"
+  endfor
+  let bufNum = term_start(['/bin/sh', '-ic', termCmd], { 'curwin' : 1 })
+  call term_wait(bufNum)
 
   let b:plum_actions = [plum#ui#InternalAction()] + get(b:, 'plum_actions', [])
   let b:plum_ui_store = store
