@@ -21,7 +21,7 @@ endfunction
 function! plum#git#InitPane(context)
   let context = a:context
   new
-  call plum#ui#Run(plum#git#UiSpec())
+  call plum#ui#Run(get(g:, 'plum_git_ui_spec', plum#git#UiSpec()))
 endfunction
 
 function! plum#git#UiSpec()
